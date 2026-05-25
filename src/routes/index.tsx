@@ -15,6 +15,8 @@ import {
 } from "chart.js";
 import { Doughnut, Bar, Line } from "react-chartjs-2";
 import JSZip from "jszip";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   Sparkles,
   Brain,
@@ -26,7 +28,11 @@ import {
   ShieldCheck,
   Layers,
   ArrowRight,
+  Search,
+  FileText,
+  Mic,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
