@@ -462,9 +462,33 @@ function Index() {
             </Card>
           </div>
 
-          <h3 className="text-2xl font-bold mt-10 mb-4">History</h3>
+          <div className="flex flex-wrap items-center gap-2 mt-10 mb-4">
+            <h3 className="text-2xl font-bold">History</h3>
+            <div className="relative ml-auto">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search history…"
+                className="pl-9 w-56 bg-white/5 border-white/10"
+              />
+            </div>
+            <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
+              <SelectTrigger className="w-36 bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="positive">Positive</SelectItem>
+                <SelectItem value="negative">Negative</SelectItem>
+                <SelectItem value="neutral">Neutral</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid gap-3">
-            {history.slice(0, 20).map((h) => (
+            {history
+              .filter((h) => filter === "all" || h.sentiment === filter)
+              .filter((h) => !search || h.text.toLowerCase().includes(search.toLowerCase()))
+              .slice(0, 30)
+              .map((h) => (
               <Card key={h.id} className="bg-white/5 border-white/10 p-4">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <Badge className={
