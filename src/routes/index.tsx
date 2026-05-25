@@ -86,6 +86,9 @@ function Index() {
   const [history, setHistory] = useState<AnalysisResult[]>([]);
   const [latest, setLatest] = useState<AnalysisResult | null>(null);
   const [mode, setMode] = useState<"single" | "batch">("single");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "positive" | "negative" | "neutral">("all");
+  const [listening, setListening] = useState(false);
 
   useEffect(() => {
     try {
