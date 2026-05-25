@@ -390,6 +390,9 @@ function Index() {
               <Brain className="w-4 h-4 mr-1" /> Analyze
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
+            <Button variant="outline" onClick={startVoice} className={`border-white/10 bg-white/5 ${listening ? "text-rose-300 animate-pulse" : ""}`}>
+              <Mic className="w-4 h-4 mr-1" /> {listening ? "Listening…" : "Voice"}
+            </Button>
             <Button variant="outline" onClick={() => setText("")} className="border-white/10 bg-white/5">
               Clear input
             </Button>
