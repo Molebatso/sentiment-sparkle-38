@@ -15,6 +15,8 @@ import {
 } from "chart.js";
 import { Doughnut, Bar, Line } from "react-chartjs-2";
 import JSZip from "jszip";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   Sparkles,
   Brain,
@@ -26,7 +28,11 @@ import {
   ShieldCheck,
   Layers,
   ArrowRight,
+  Search,
+  FileText,
+  Mic,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -80,6 +86,9 @@ function Index() {
   const [history, setHistory] = useState<AnalysisResult[]>([]);
   const [latest, setLatest] = useState<AnalysisResult | null>(null);
   const [mode, setMode] = useState<"single" | "batch">("single");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "positive" | "negative" | "neutral">("all");
+  const [listening, setListening] = useState(false);
 
   useEffect(() => {
     try {
@@ -153,6 +162,77 @@ function Index() {
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Source bundle downloaded.");
+  }
+
+  function downloadPdf() {
+    if (history.length === 0) {
+      toast.error("No data to export.");
+      return;
+    }
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("NEXUS.ai — AI Business Intelligence Report", 14, 18);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generated ${new Date().toLocaleString()}`, 14, 25);
+
+    doc.setTextColor(20);
+    doc.setFontSize(12);
+    doc.text("Executive Summary", 14, 36);
+    doc.setFontSize(10);
+    const summary = [
+      `Total analyses: ${stats.total}`,
+      `Positive: ${stats.pos}  |  Negative: ${stats.neg}  |  Neutral: ${stats.neu}`,
+      `Average confidence: ${Math.round(stats.avgConf * 100)}%`,
+      `Dominant emotions: ${Object.entries(stats.emotions).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([e])=>e).join(", ") || "—"}`,
+    ];
+    summary.forEach((s, i) => doc.text(s, 14, 44 + i * 6));
+
+    doc.setFontSize(12);
+    doc.text("Top AI Recommendations", 14, 74);
+    const recs = history.slice(0, 5).map((h, i) => [`${i + 1}`, h.sentiment, h.emotion, h.recommendation]);
+    autoTable(doc, {
+      startY: 78,
+      head: [["#", "Sentiment", "Emotion", "Recommendation"]],
+      body: recs,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [34, 211, 238] },
+    });
+
+    autoTable(doc, {
+      head: [["Timestamp", "Industry", "Sentiment", "Conf.", "Text"]],
+      body: history.slice(0, 50).map((h) => [
+        new Date(h.timestamp).toLocaleString(),
+        h.industry,
+        h.sentiment,
+        `${Math.round(h.confidence * 100)}%`,
+        h.text.slice(0, 80),
+      ]),
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [167, 139, 250] },
+    });
+
+    doc.save(`nexus-ai-report-${Date.now()}.pdf`);
+    toast.success("PDF report generated.");
+  }
+
+  function startVoice() {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      toast.error("Voice input not supported in this browser.");
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "en-US";
+    rec.interimResults = false;
+    setListening(true);
+    rec.onresult = (e: any) => {
+      const transcript = e.results[0][0].transcript;
+      setText((t) => (t ? `${t} ${transcript}` : transcript));
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    rec.start();
   }
 
   const stats = useMemo(() => {
@@ -232,8 +312,11 @@ function Index() {
             <Button size="sm" variant="outline" onClick={downloadCsv} className="border-white/10 bg-white/5 hover:bg-white/10">
               <Download className="w-4 h-4 mr-1" /> CSV
             </Button>
+            <Button size="sm" variant="outline" onClick={downloadPdf} className="border-white/10 bg-white/5 hover:bg-white/10">
+              <FileText className="w-4 h-4 mr-1" /> PDF
+            </Button>
             <Button size="sm" onClick={downloadSourceZip} className="bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 hover:opacity-90">
-              <FileCode2 className="w-4 h-4 mr-1" /> Source ZIP
+              <FileCode2 className="w-4 h-4 mr-1" /> Source
             </Button>
           </div>
         </div>
@@ -307,6 +390,9 @@ function Index() {
               <Brain className="w-4 h-4 mr-1" /> Analyze
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
+            <Button variant="outline" onClick={startVoice} className={`border-white/10 bg-white/5 ${listening ? "text-rose-300 animate-pulse" : ""}`}>
+              <Mic className="w-4 h-4 mr-1" /> {listening ? "Listening…" : "Voice"}
+            </Button>
             <Button variant="outline" onClick={() => setText("")} className="border-white/10 bg-white/5">
               Clear input
             </Button>
@@ -376,9 +462,33 @@ function Index() {
             </Card>
           </div>
 
-          <h3 className="text-2xl font-bold mt-10 mb-4">History</h3>
+          <div className="flex flex-wrap items-center gap-2 mt-10 mb-4">
+            <h3 className="text-2xl font-bold">History</h3>
+            <div className="relative ml-auto">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search history…"
+                className="pl-9 w-56 bg-white/5 border-white/10"
+              />
+            </div>
+            <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
+              <SelectTrigger className="w-36 bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="positive">Positive</SelectItem>
+                <SelectItem value="negative">Negative</SelectItem>
+                <SelectItem value="neutral">Neutral</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid gap-3">
-            {history.slice(0, 20).map((h) => (
+            {history
+              .filter((h) => filter === "all" || h.sentiment === filter)
+              .filter((h) => !search || h.text.toLowerCase().includes(search.toLowerCase()))
+              .slice(0, 30)
+              .map((h) => (
               <Card key={h.id} className="bg-white/5 border-white/10 p-4">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <Badge className={
