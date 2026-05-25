@@ -164,6 +164,77 @@ function Index() {
     toast.success("Source bundle downloaded.");
   }
 
+  function downloadPdf() {
+    if (history.length === 0) {
+      toast.error("No data to export.");
+      return;
+    }
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("NEXUS.ai — AI Business Intelligence Report", 14, 18);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generated ${new Date().toLocaleString()}`, 14, 25);
+
+    doc.setTextColor(20);
+    doc.setFontSize(12);
+    doc.text("Executive Summary", 14, 36);
+    doc.setFontSize(10);
+    const summary = [
+      `Total analyses: ${stats.total}`,
+      `Positive: ${stats.pos}  |  Negative: ${stats.neg}  |  Neutral: ${stats.neu}`,
+      `Average confidence: ${Math.round(stats.avgConf * 100)}%`,
+      `Dominant emotions: ${Object.entries(stats.emotions).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([e])=>e).join(", ") || "—"}`,
+    ];
+    summary.forEach((s, i) => doc.text(s, 14, 44 + i * 6));
+
+    doc.setFontSize(12);
+    doc.text("Top AI Recommendations", 14, 74);
+    const recs = history.slice(0, 5).map((h, i) => [`${i + 1}`, h.sentiment, h.emotion, h.recommendation]);
+    autoTable(doc, {
+      startY: 78,
+      head: [["#", "Sentiment", "Emotion", "Recommendation"]],
+      body: recs,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [34, 211, 238] },
+    });
+
+    autoTable(doc, {
+      head: [["Timestamp", "Industry", "Sentiment", "Conf.", "Text"]],
+      body: history.slice(0, 50).map((h) => [
+        new Date(h.timestamp).toLocaleString(),
+        h.industry,
+        h.sentiment,
+        `${Math.round(h.confidence * 100)}%`,
+        h.text.slice(0, 80),
+      ]),
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [167, 139, 250] },
+    });
+
+    doc.save(`nexus-ai-report-${Date.now()}.pdf`);
+    toast.success("PDF report generated.");
+  }
+
+  function startVoice() {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      toast.error("Voice input not supported in this browser.");
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "en-US";
+    rec.interimResults = false;
+    setListening(true);
+    rec.onresult = (e: any) => {
+      const transcript = e.results[0][0].transcript;
+      setText((t) => (t ? `${t} ${transcript}` : transcript));
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    rec.start();
+  }
+
   const stats = useMemo(() => {
     const total = history.length;
     const pos = history.filter((h) => h.sentiment === "positive").length;
