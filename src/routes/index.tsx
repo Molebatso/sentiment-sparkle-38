@@ -312,8 +312,11 @@ function Index() {
             <Button size="sm" variant="outline" onClick={downloadCsv} className="border-white/10 bg-white/5 hover:bg-white/10">
               <Download className="w-4 h-4 mr-1" /> CSV
             </Button>
+            <Button size="sm" variant="outline" onClick={downloadPdf} className="border-white/10 bg-white/5 hover:bg-white/10">
+              <FileText className="w-4 h-4 mr-1" /> PDF
+            </Button>
             <Button size="sm" onClick={downloadSourceZip} className="bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 hover:opacity-90">
-              <FileCode2 className="w-4 h-4 mr-1" /> Source ZIP
+              <FileCode2 className="w-4 h-4 mr-1" /> Source
             </Button>
           </div>
         </div>
